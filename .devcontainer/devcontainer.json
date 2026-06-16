@@ -1,0 +1,55 @@
+{
+    "name": "Claude Code Sandbox (durci, podman, home persistant)",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+
+    "remoteUser": "node",
+    "updateRemoteUserUID": true,
+    "containerUser": "node",
+
+    // ─── COUCHE 1 : neutralisation des variables d'environnement (ponts VSCode) ───
+    "remoteEnv": {
+        "SSH_AUTH_SOCK": "",
+        "GPG_AGENT_INFO": "",
+        "BROWSER": "",
+        "VSCODE_IPC_HOOK_CLI": null,
+        "VSCODE_GIT_IPC_HANDLE": null,
+        "GIT_ASKPASS": null,
+        "VSCODE_GIT_ASKPASS_MAIN": null,
+        "VSCODE_GIT_ASKPASS_NODE": null,
+        "VSCODE_GIT_ASKPASS_EXTRA_ARGS": null,
+        "REMOTE_CONTAINERS_IPC": null,
+        "REMOTE_CONTAINERS_SOCKETS": null,
+        "REMOTE_CONTAINERS_DISPLAY_SOCK": null,
+        "WAYLAND_DISPLAY": null
+    },
+
+    // ─── PERSISTANCE : un seul volume sur tout le home ───
+    // Persiste d'un coup : .claude.json, .claude/, .bash_history, .config/, etc.
+    // L'initialisation depuis /opt/home-skel se fait dans le postCreateCommand.
+    "mounts": [
+        "source=claude-code-home,target=/home/node,type=volume"
+    ],
+
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "dev.containers.dockerCredentialHelper": false,
+                "dev.containers.copyGitConfig": false,
+                "terminal.integrated.defaultProfile.linux": "bash"
+            },
+            "extensions": [
+                "anthropic.claude-code"
+            ]
+        }
+    },
+
+    // Initialise le volume home depuis le modèle si le volume est "neuf".
+    // Détection : si .bashrc absent dans le home monté -> on copie le skel.
+    // Puis on s'assure que node est bien propriétaire de son home.
+    "postCreateCommand": "if [ ! -f /home/node/.bashrc ]; then sudo cp -a /opt/home-skel/. /home/node/ && sudo chown -R node:node /home/node; fi && claude --version",
+
+    // Nettoyage des sockets VSCode précoces
+    "postStartCommand": "find /tmp -maxdepth 2 \\( -name 'vscode-ssh-auth-*.sock' -o -name 'vscode-remote-containers-ipc-*.sock' -o -name 'vscode-remote-containers-*.js' \\) -delete 2>/dev/null || true"
+}

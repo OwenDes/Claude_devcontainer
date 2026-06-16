@@ -1,0 +1,16 @@
+# gitignore GLOBAL — artefacts d'outils perso à ne jamais committer,
+# quel que soit le repo (référencé par git config core.excludesfile).
+# Adapte la liste à tes besoins.
+
+# Claude Code
+.claude/
+CLAUDE.local.md
+
+# direnv / variables d'env locales
+.direnv/
+.env
+.env.local
+
+# OS / éditeurs
+.DS_Store
+*.swp

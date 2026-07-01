@@ -1,19 +1,19 @@
 {
-    // ════════════════════════════════════════════════════════════════════════
+    //  ════════════════════════════════════════════════════════════════════════
     //  RÉGLAGES DE DURCISSEMENT VSCode — Dev Containers
-    // ════════════════════════════════════════════════════════════════════════
+    //  ════════════════════════════════════════════════════════════════════════
     //
     //  Ce fichier vit DANS le projet, donc il voyage avec le dossier (et avec
     //  Git si tu versionnes). Les réglages ci-dessous s'appliquent à quiconque
     //  ouvre ce projet, sur n'importe quelle machine (perso ou école).
     //
     //  ┌─────────────────────────────────────────┬──────────────────┬──────────────────────────────────────────────────────────────┐
-    //  │ Réglage                                  │ État conseillé   │ Pourquoi                                                       │
+    //  │ Réglage                                 │ État conseillé   │ Pourquoi                                                     │
     //  ├─────────────────────────────────────────┼──────────────────┼──────────────────────────────────────────────────────────────┤
-    //  │ dev.containers.dockerCredentialHelper    │ false  (actif ↓) │ Coupe le partage des credentials Docker registry               │
-    //  │ dev.containers.copyGitConfig             │ false  (actif ↓) │ Empêche la copie de ton .gitconfig (email, tokens, chemins)    │
-    //  │ dev.containers.mountWaylandSocket        │ décoché *        │ Pont GUI (à décocher dans les settings VSCode de la machine)   │
-    //  │ dev.containers.forwardWSLServices        │ décoché *        │ SSH/GPG/X/Wayland forwardés depuis WSL                         │
+    //  │ dev.containers.dockerCredentialHelper   │ false  (actif ↓) │ Coupe le partage des credentials Docker registry             │
+    //  │ dev.containers.copyGitConfig            │ false  (actif ↓) │ Empêche la copie de ton .gitconfig (email, tokens, chemins)  │
+    //  │ dev.containers.mountWaylandSocket       │ décoché *        │ Pont GUI (à décocher dans les settings VSCode de la machine) │
+    //  │ dev.containers.forwardWSLServices       │ décoché *        │ SSH/GPG/X/Wayland forwardés depuis WSL                       │
     //  └─────────────────────────────────────────┴──────────────────┴──────────────────────────────────────────────────────────────┘
     //
     //  * mountWaylandSocket et forwardWSLServices sont des réglages MACHINE
@@ -36,7 +36,7 @@
     //  ── Réglage MACHINE à NE PAS mettre ici ───────────────────────────────────
     //  dev.containers.dockerPath : "podman" chez toi / "docker" à l'école.
     //  Dépend du moteur installé localement -> à régler en User Settings, pas ici.
-    // ════════════════════════════════════════════════════════════════════════
+    //  ════════════════════════════════════════════════════════════════════════
 
     "dev.containers.dockerCredentialHelper": false,
     "dev.containers.copyGitConfig": false

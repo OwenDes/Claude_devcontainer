@@ -1,0 +1,12 @@
+[submodule "age-plugin-yubikey"]
+	path = age-plugin-yubikey
+	url = https://github.com/str4d/age-plugin-yubikey.git
+[submodule "passage"]
+	path = passage
+	url = https://github.com/FiloSottile/passage.git
+[submodule "passforios"]
+	path = passforios
+	url = https://github.com/passforios/passforios.git
+[submodule "rage"]
+	path = rage
+	url = https://github.com/str4d/rage.git

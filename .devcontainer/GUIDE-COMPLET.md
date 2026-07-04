@@ -305,6 +305,20 @@ Option : ajouter une ligne `login: <user>` dans l'entrée (défaut `oauth2`).
 Ensuite : retire `export GITLAB_TOKEN=...` de `~/.bashrc` et **révoque**
 l'ancien token. Vérifie : `git ls-remote https://github.com/<user>/<repo>.git`.
 
+**Nommage (piège classique)** : le helper mappe l'hôte de l'URL git vers
+l'entrée `git/<host>` — le nom doit être **exactement** l'hôte. Un token
+rangé sous `git/gitlab/monuser` ne sera jamais trouvé ; il faut
+`git/gitlab.com` ou `git/gitlab-df.imt-atlantique.fr`. Un hôte par entrée.
+
+**HTTPS uniquement** : pass ne s'active que pour les remotes `https://…`.
+Un remote SSH (`git@host:…`) utilise tes clés SSH, pas pass. Pour basculer :
+`git remote set-url origin https://<host>/<user>/<repo>.git`.
+
+**Trousseau isolé** : pass utilise `~/.gnupg-pass` (pas le `~/.gnupg` par
+défaut, qui peut contenir des clés v5 illisibles par le GnuPG de bookworm),
+via `PASSWORD_STORE_GPG_OPTS`. Pour un usage manuel de `pass`, cette variable
+est déjà exportée par `security-harden.sh`.
+
 > Choix « unattended » : clé GPG sans passphrase → push sans intervention.
 > Protège le token au repos et contre la fuite accidentelle (env/logs), pas
 > contre un agent qui le déchiffrerait à l'usage. Pour ce cas : YubiKey touch

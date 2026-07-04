@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-07-04 (mise en service pass) — Trousseau isolé, token retiré, notes
+
+Mise en service réelle du stockage pass et finition sécurité.
+
+- **Trousseau GPG dédié `~/.gnupg-pass`** (commit `2823a28`) : le `~/.gnupg`
+  persistant contient des clés au format v5 que le GnuPG 2.2 de bookworm ne
+  sait pas lire (« unknown version 5 »), ce qui faisait échouer `pass init`.
+  `pass` utilise donc un trousseau isolé via `PASSWORD_STORE_GPG_OPTS`
+  (`setup-git-token`, `git-credential-pass`, `security-harden.sh`) ; le
+  `~/.gnupg` de l'utilisateur n'est pas touché. Round-trip token vérifié
+  (`git credential fill` → username/password déchiffrés).
+- **`GITLAB_TOKEN` retiré de `~/.bashrc`** (fait) et backup temporaire
+  détruit au `shred` (il contenait le token). ⚠️ Les shells déjà ouverts
+  gardent la variable jusqu'à fermeture. **Révocation du token côté GitLab =
+  action utilisateur, toujours requise** (fuité en clair dans des logs).
+- **Convention de nommage pass** : le helper mappe l'hôte de l'URL git vers
+  l'entrée `git/<host>` (ex. `git/github.com`,
+  `git/gitlab-df.imt-atlantique.fr`, `git/gitlab.com`). Une entrée mal
+  nommée n'est jamais trouvée.
+- **Note SSH** : ce repo a un remote SSH (`git@github.com`) et une clé
+  `~/.ssh/id_ed25519` **sans passphrase** dans le volume → push unattended
+  sans agent. Le helper pass ne concerne que les remotes `https://…`.
+  Choix laissé ouvert : rester en SSH, ou passer en HTTPS+pass (token
+  chiffré au repos, plus cohérent avec le reste du durcissement).
+
 ## 2026-07-04 (accès) — Bascule réseau + tokens Git chiffrés
 
 Répond à deux besoins : ouvrir/fermer l'accès réseau à la demande, et

@@ -37,6 +37,15 @@
     // ─── PERSISTANCE : un seul volume sur tout le home ───
     // Persiste d'un coup : .claude.json, .claude/, .bash_history, .config/,
     // et Claude Code lui-même (~/.local/bin). Init via init-home.sh.
+    //
+    // ── OPT-IN YubiKey (mode card) ──────────────────────────────────────
+    // Pour utiliser une clé sur YubiKey via le gpg-agent de l'HÔTE, monte
+    // le socket gpg-agent de l'hôte dans le trousseau pass du conteneur.
+    // Ne PAS activer si tu n'utilises pas la YubiKey (par défaut : rien à
+    // monter, tout marche en local). ⚠️ Suppose un gpg-agent qui tourne
+    // côté WSL (socket Unix). Ajuste le chemin source à ton hôte, décommente
+    // la ligne, et lis la section YubiKey du GUIDE.
+    //   "source=${localEnv:HOME}/.gnupg/S.gpg-agent.extra,target=/home/node/.gnupg-pass/S.gpg-agent,type=bind"
     "mounts": [
         "source=claude-code-home,target=/home/node,type=volume"
     ],

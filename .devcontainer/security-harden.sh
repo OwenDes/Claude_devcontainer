@@ -39,20 +39,32 @@ alias net-strict='sudo /usr/local/bin/init-firewall.sh strict'
 export PASSWORD_STORE_GPG_OPTS="--homedir ${HOME}/.gnupg-pass"
 
 # ── CLI d'API Git : token injecté depuis pass À L'APPEL (jamais en clair) ──
-# Le token = 1re ligne de l'entrée pass "git/<host>".
+# Le token = 1re ligne de l'entrée pass. Deux conventions essayées :
+# git/<host> (mode none) ou git/<host>/token (passphrase/yubikey).
 # gh : GitHub (hôte unique). glab : GitLab, hôte déduit du remote courant
 # (sinon gitlab.com), avec le token pass correspondant.
 _git_remote_host() {
     git remote get-url "${1:-origin}" 2>/dev/null \
         | sed -E -e 's#^[a-z]+://##' -e 's#^[^@]*@##' -e 's#[:/].*$##'
 }
+_pass_git_token() {   # $1 = host → 1re ligne (token) de la 1re entrée trouvée
+    local host="$1" e store="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
+    # Ne matche qu'un FICHIER .gpg (pas un dossier). git/<host>/token prioritaire.
+    for e in "git/$host/token" "git/$host"; do
+        if [ -f "$store/$e.gpg" ]; then
+            pass show "$e" 2>/dev/null | head -n1
+            return 0
+        fi
+    done
+    return 1
+}
 gh() {
-    GH_TOKEN="$(pass show git/github.com 2>/dev/null | head -n1)" command gh "$@"
+    GH_TOKEN="$(_pass_git_token github.com)" command gh "$@"
 }
 glab() {
     local host="${GITLAB_HOST:-$(_git_remote_host)}"
     case "$host" in *.*) ;; *) host="gitlab.com" ;; esac
     GITLAB_HOST="$host" \
-    GITLAB_TOKEN="$(pass show "git/$host" 2>/dev/null | head -n1)" \
+    GITLAB_TOKEN="$(_pass_git_token "$host")" \
     command glab "$@"
 }

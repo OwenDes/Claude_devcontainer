@@ -295,15 +295,32 @@ une barrière contre un agent malveillant.
 Le token ne doit PAS vivre en clair dans `~/.bashrc`. Il est chiffré via
 `pass` et déchiffré à la volée par le helper `git-credential-pass`.
 
-Configuration unique (après un rebuild qui installe `pass`) :
+Configuration (après un rebuild qui installe `pass`) — **protection au choix
+par hôte** :
 ```bash
-setup-git-token                              # crée clé GPG + store + helper
-pass insert -m git/github.com                # 1re ligne = le token
-pass insert -m git/gitlab-df.imt-atlantique.fr
+setup-git-token                                # init store + aide
+setup-git-token github.com                     # mode none (défaut, sans passphrase)
+setup-git-token gitlab.com passphrase          # clé locale AVEC passphrase
+setup-git-token gitlab-df.imt-atlantique.fr card:0xKEYID   # YubiKey (voir + bas)
 ```
-Option : ajouter une ligne `login: <user>` dans l'entrée (défaut `oauth2`).
+Puis enregistre le token (1re ligne = token ; ligne `login: <user>` optionnelle) :
+```bash
+pass insert -m git/github.com                  # mode none : entrée à plat
+pass insert -m git/gitlab.com/token            # passphrase/card : sous-dossier
+```
 Ensuite : retire `export GITLAB_TOKEN=...` de `~/.bashrc` et **révoque**
 l'ancien token. Vérifie : `git ls-remote https://github.com/<user>/<repo>.git`.
+
+**Les 3 modes** (par hôte, indépendants) :
+
+| Mode | Clé | Déchiffrement | Pour |
+|---|---|---|---|
+| `none` (défaut) | locale, sans passphrase | automatique | comme avant, unattended |
+| `passphrase` | locale, avec passphrase | demande la passphrase (mise en cache par gpg-agent) | protéger au repos par un secret |
+| `card:<KEYID>` | privée sur **YubiKey** (agent hôte) | **touch** physique à chaque fois | agent hostile ne peut rien déchiffrer sans toi |
+
+Chaque hôte a sa propre clé/protection (sous-dossiers pass `git/<host>/`).
+Le mode `none` reste à plat (`git/<host>`) pour rétrocompatibilité.
 
 **Helper générique = ajout d'hôte automatique** : un seul
 `credential.helper` couvre TOUS les hôtes. Pour un nouveau serveur Git,
@@ -325,10 +342,44 @@ défaut, qui peut contenir des clés v5 illisibles par le GnuPG de bookworm),
 via `PASSWORD_STORE_GPG_OPTS`. Pour un usage manuel de `pass`, cette variable
 est déjà exportée par `security-harden.sh`.
 
-> Choix « unattended » : clé GPG sans passphrase → push sans intervention.
-> Protège le token au repos et contre la fuite accidentelle (env/logs), pas
-> contre un agent qui le déchiffrerait à l'usage. Pour ce cas : YubiKey touch
-> (passage) ou credential broker côté hôte.
+> Mode `none` : clé GPG sans passphrase → push sans intervention. Protège le
+> token au repos et contre la fuite accidentelle (env/logs), pas contre un
+> agent qui le déchiffrerait à l'usage. Les modes `passphrase` et surtout
+> `card` (YubiKey touch) ferment ce dernier trou.
+
+### YubiKey (mode `card`) — via gpg-agent de l'hôte
+
+Principe : la **clé privée reste sur la YubiKey/l'hôte**, jamais dans le
+conteneur. `gpg` du conteneur délègue le déchiffrement au **gpg-agent de
+l'hôte** dont on monte le socket. Chaque déchiffrement demande un **touch**.
+
+> ⚠️ **Non testé** (dépend de ton hôte). Suppose un **gpg-agent qui tourne
+> côté WSL/Linux** (socket Unix montable) avec la YubiKey configurée (OpenPGP,
+> touch activé via `ykman openpgp keys set-touch`). Un gpg-agent **Windows/
+> Gpg4win** n'expose pas un socket Unix montable tel quel — fais tourner
+> l'agent dans WSL, ou reste en `none`/`passphrase`.
+
+**Côté hôte (WSL), une fois :**
+```bash
+gpg --card-status                        # la YubiKey est vue (OpenPGP)
+gpg --export --armor <KEYID> > pub.asc   # exporte la clé PUBLIQUE
+gpgconf --list-dirs agent-extra-socket   # note le chemin du socket "extra"
+```
+Copie `pub.asc` dans ton projet (ou le workspace).
+
+**Dans `devcontainer.json`** : décommente et ajuste le mount du socket
+(section « OPT-IN YubiKey »), pointant vers ton `agent-extra-socket`, cible
+`/home/node/.gnupg-pass/S.gpg-agent`. Reopen/Rebuild.
+
+**Dans le conteneur, une fois :**
+```bash
+gpg --homedir ~/.gnupg-pass --import pub.asc           # clé PUBLIQUE (chiffrer)
+setup-git-token <host> card:<KEYID>                    # sous-dossier sur cette clé
+pass insert -m git/<host>/token                        # → touch YubiKey au 1er show
+```
+
+Vérifie : `git ls-remote https://<host>/…` doit faire **clignoter la YubiKey**
+et attendre ton doigt. Pas de touch = pas de token.
 
 ### Issues / tickets / MR via `glab` et `gh`
 Les CLI `gh` (GitHub) et `glab` (GitLab) sont installées dans l'image, et

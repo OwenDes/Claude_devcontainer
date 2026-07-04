@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-07-04 (protection par hôte) — passphrase / YubiKey au choix
+
+Protection du token **configurable par hôte**, tout en gardant le
+comportement actuel (mode `none`, sans passphrase) par défaut.
+
+- **`setup-git-token <host> [none|passphrase|card:<KEYID>]`** :
+  - `none` (défaut) : clé locale sans passphrase, entrée à plat `git/<host>`
+    (identique à avant).
+  - `passphrase` : clé locale **par hôte** avec passphrase, sous-dossier pass
+    `git/<host>/token` (chaque hôte sa clé/passphrase).
+  - `card:<KEYID>` : clé privée sur **YubiKey** via le **gpg-agent de l'hôte**
+    (socket forwardé) → touch à chaque déchiffrement, la clé privée ne touche
+    jamais le conteneur.
+- **Helper + wrappers** (`git-credential-pass`, `gh`/`glab`) : cherchent
+  `git/<host>/token` (protégé) puis `git/<host>` (none). Fix : ne matcher
+  qu'un **fichier `.gpg`** réel, pas un dossier (dont `pass show` renverrait
+  l'arborescence).
+- **Image** : `pinentry-curses` (saisie de passphrase). **devcontainer.json** :
+  mount **opt-in commenté** du socket gpg-agent hôte (par défaut rien à
+  monter, tout marche en local).
+- **Testé ici** : modes `none` et `passphrase` (création clé, sous-dossier,
+  round-trip, lookup fichier-vs-dossier). **Non testé** (dépend de l'hôte) :
+  le mode `card`/YubiKey — câblé et documenté (section YubiKey du GUIDE),
+  suppose un gpg-agent côté WSL.
+
 ## 2026-07-04 (CLI API) — glab + gh avec token pass injecté
 
 Le token pass sert à l'**API** (issues, tickets, MR/PR), pas au `git push`

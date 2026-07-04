@@ -34,6 +34,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     dnsutils \
     iproute2 \
     pass \
+    pinentry-curses \
     && rm -rf /var/lib/apt/lists/*
 
 RUN sed -i '/fr_FR.UTF-8/s/^# //g' /etc/locale.gen && locale-gen

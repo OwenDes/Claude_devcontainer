@@ -6,10 +6,14 @@
 # "git/<host>". Convention de l'entrée : 1re ligne = token ; ligne
 # optionnelle "login: <user>" = nom d'utilisateur (défaut : oauth2).
 #
-# Ainsi le token n'est JAMAIS en clair dans ~/.bashrc, l'env ou l'image :
-# il est déchiffré (GPG) uniquement au moment d'une opération git.
+# Trousseau GPG dédié (~/.gnupg-pass) : isolé du ~/.gnupg par défaut, qui
+# peut contenir des clés v5 illisibles par le GnuPG de Debian bookworm.
+# Auto-suffisant (fixe l'option ici) pour marcher même appelé par le git
+# de VSCode, dont l'environnement ne source pas forcément le shell.
 # ──────────────────────────────────────────────────────────────────────────
 set -euo pipefail
+
+export PASSWORD_STORE_GPG_OPTS="--homedir ${HOME}/.gnupg-pass"
 
 [ "${1:-}" = "get" ] || exit 0
 

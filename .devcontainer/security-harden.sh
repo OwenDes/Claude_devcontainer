@@ -33,3 +33,7 @@ export GPG_AGENT_INFO=
 # Bascule pratique du pare-feu (mode recherche/install vs verrouillé)
 alias net-open='sudo /usr/local/bin/init-firewall.sh open'
 alias net-strict='sudo /usr/local/bin/init-firewall.sh strict'
+
+# pass utilise un trousseau GPG dédié (~/.gnupg-pass), isolé du ~/.gnupg
+# par défaut qui peut contenir des clés v5 illisibles par le GnuPG bookworm.
+export PASSWORD_STORE_GPG_OPTS="--homedir ${HOME}/.gnupg-pass"

@@ -40,6 +40,25 @@ RUN sed -i '/fr_FR.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
 ENV LANG=fr_FR.UTF-8 LANGUAGE=fr_FR:fr LC_ALL=fr_FR.UTF-8
 
 # ──────────────────────────────────────────────────────────────────────────
+# CLI d'API Git (issues, tickets, MR/PR) : gh (GitHub) + glab (GitLab).
+# Binaires statiques depuis les releases officielles (amd64). Non fatal si un
+# téléchargement échoue -> l'image se construit quand même (bump des versions
+# ci-dessous si besoin). Le token vient de pass via des wrappers shell
+# (voir security-harden.sh), donc aucun secret ici.
+# ──────────────────────────────────────────────────────────────────────────
+ARG GH_VERSION=2.63.2
+ARG GLAB_VERSION=1.48.0
+RUN { curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz" -o /tmp/gh.tgz \
+        && tar xzf /tmp/gh.tgz -C /tmp \
+        && install "/tmp/gh_${GH_VERSION}_linux_amd64/bin/gh" /usr/local/bin/gh \
+        && gh --version; } || echo "⚠️ gh non installé (ajuste GH_VERSION)"; \
+    { curl -fsSL "https://gitlab.com/gitlab-org/cli/-/releases/v${GLAB_VERSION}/downloads/glab_${GLAB_VERSION}_linux_amd64.tar.gz" -o /tmp/glab.tgz \
+        && tar xzf /tmp/glab.tgz -C /tmp \
+        && install "$(find /tmp -type f -name glab | head -1)" /usr/local/bin/glab \
+        && glab --version; } || echo "⚠️ glab non installé (ajuste GLAB_VERSION)"; \
+    rm -rf /tmp/gh* /tmp/glab*
+
+# ──────────────────────────────────────────────────────────────────────────
 # DURCISSEMENT — script de neutralisation des ponts VSCode.
 # Placé dans /etc (root, dans l'image) et PAS dans le home : il n'est pas
 # masqué par le volume persistant, il reçoit les mises à jour à chaque

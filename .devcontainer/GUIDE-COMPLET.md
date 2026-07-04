@@ -330,6 +330,28 @@ est déjà exportée par `security-harden.sh`.
 > contre un agent qui le déchiffrerait à l'usage. Pour ce cas : YubiKey touch
 > (passage) ou credential broker côté hôte.
 
+### Issues / tickets / MR via `glab` et `gh`
+Les CLI `gh` (GitHub) et `glab` (GitLab) sont installées dans l'image, et
+des **wrappers** (dans `security-harden.sh`) injectent le token depuis pass
+**à l'appel** — tu ne tapes jamais le token :
+```bash
+gh issue list                              # utilise git/github.com
+glab issue create                          # hôte déduit du remote du repo courant
+GITLAB_HOST=gitlab.com glab mr list        # forcer un autre GitLab
+```
+`glab` déduit l'hôte du remote git courant (SSH ou HTTPS), sinon `gitlab.com` ;
+force-le avec `GITLAB_HOST=<host>`. Il faut une entrée `pass insert -m git/<host>`
+pour chaque serveur. Ces hôtes doivent être joignables : GitHub, gitlab.com et
+gitlab-df.imt-atlantique.fr sont déjà dans l'allowlist stricte du pare-feu.
+
+> Git reste indépendant : si tes remotes sont en **SSH**, `push`/`pull`
+> passent par tes clés SSH ; le token pass ne sert qu'à l'**API** (issues,
+> tickets, MR/PR) via `glab`/`gh`.
+
+> Versions des CLI figées par `GH_VERSION` / `GLAB_VERSION` (ARG du
+> Dockerfile). Si le build affiche « ⚠️ gh/glab non installé », bumpe la
+> version correspondante et rebuild.
+
 ### Sudo restreint
 `node` ne peut lancer via sudo QUE `init-home.sh` et `init-firewall.sh` (scripts root, non modifiables). Plus de `NOPASSWD:ALL` : un process compromis dans le conteneur ne peut plus devenir root ni saboter le durcissement.
 

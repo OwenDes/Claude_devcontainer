@@ -37,3 +37,22 @@ alias net-strict='sudo /usr/local/bin/init-firewall.sh strict'
 # pass utilise un trousseau GPG dédié (~/.gnupg-pass), isolé du ~/.gnupg
 # par défaut qui peut contenir des clés v5 illisibles par le GnuPG bookworm.
 export PASSWORD_STORE_GPG_OPTS="--homedir ${HOME}/.gnupg-pass"
+
+# ── CLI d'API Git : token injecté depuis pass À L'APPEL (jamais en clair) ──
+# Le token = 1re ligne de l'entrée pass "git/<host>".
+# gh : GitHub (hôte unique). glab : GitLab, hôte déduit du remote courant
+# (sinon gitlab.com), avec le token pass correspondant.
+_git_remote_host() {
+    git remote get-url "${1:-origin}" 2>/dev/null \
+        | sed -E -e 's#^[a-z]+://##' -e 's#^[^@]*@##' -e 's#[:/].*$##'
+}
+gh() {
+    GH_TOKEN="$(pass show git/github.com 2>/dev/null | head -n1)" command gh "$@"
+}
+glab() {
+    local host="${GITLAB_HOST:-$(_git_remote_host)}"
+    case "$host" in *.*) ;; *) host="gitlab.com" ;; esac
+    GITLAB_HOST="$host" \
+    GITLAB_TOKEN="$(pass show "git/$host" 2>/dev/null | head -n1)" \
+    command glab "$@"
+}

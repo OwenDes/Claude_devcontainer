@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-07-04 (CLI API) — glab + gh avec token pass injecté
+
+Le token pass sert à l'**API** (issues, tickets, MR/PR), pas au `git push`
+(qui reste en SSH via les clés). Ajout des outils correspondants :
+
+- **`gh` et `glab` installés** dans l'image (binaires des releases
+  officielles, versions figées par `GH_VERSION`/`GLAB_VERSION` ; install non
+  fatale au build).
+- **Wrappers shell** (`security-harden.sh`) : `gh`/`glab` récupèrent le token
+  depuis `pass` **à l'appel** (jamais en clair). `glab` déduit l'hôte du
+  remote git courant (SSH ou HTTPS), sinon `gitlab.com` ; surcharge via
+  `GITLAB_HOST`. Logique de détection d'hôte + récupération token vérifiée.
+- Non testés ici (nécessitent rebuild + réseau) : le build de l'image et les
+  binaires `gh`/`glab` eux-mêmes.
+
 ## 2026-07-04 (mise en service pass) — Trousseau isolé, token retiré, notes
 
 Mise en service réelle du stockage pass et finition sécurité.

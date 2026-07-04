@@ -6,6 +6,10 @@
     // User Settings de la machine.
     "dev.containers.dockerCredentialHelper": false,
     "dev.containers.copyGitConfig": false,
+    // Sans ceci, VSCode injecte quand même son credential helper Git
+    // (pont vers les credentials de l'hôte) dans /etc/gitconfig ET
+    // ~/.gitconfig du conteneur — constaté dans les logs du 2026-07-04.
+    "dev.containers.gitCredentialHelperConfigLocation": "none",
 
     "remote.autoForwardPortsFallback": 0
 }

@@ -62,5 +62,5 @@
 
     // Pare-feu sortant (à chaque démarrage : les règles ne persistent pas)
     // + nettoyage best-effort des sockets VSCode précoces.
-    "postStartCommand": "sudo /usr/local/bin/init-firewall.sh || echo '⚠️ Pare-feu NON initialisé : sortie réseau non filtrée'; find /tmp -maxdepth 2 \\( -name 'vscode-ssh-auth-*.sock' -o -name 'vscode-remote-containers-ipc-*.sock' -o -name 'vscode-remote-containers-*.js' \\) -delete 2>/dev/null || true"
+    "postStartCommand": "sudo /usr/local/bin/init-firewall.sh || echo '⚠️ Pare-feu NON initialisé : sortie réseau non filtrée'; find /tmp -maxdepth 2 \\( -name 'vscode-ssh-auth-*.sock' -o -name 'vscode-remote-containers-ipc-*.sock' -o -name 'vscode-remote-containers-*.js' -o -name 'vscode-ipc-*.sock' -o -name 'vscode-git-*.sock' \\) -delete 2>/dev/null || true"
 }

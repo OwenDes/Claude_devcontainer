@@ -125,7 +125,7 @@ Une image buildée par Podman tourne sans souci sous Docker (format OCI commun).
 | Mount Wayland Socket | décoché (cohérence durcissement) |
 | Forward WSL Services | décoché |
 
-`dockerCredentialHelper:false` et `copyGitConfig:false` viennent déjà du `.vscode/settings.json` du projet.
+`dockerCredentialHelper:false`, `copyGitConfig:false` et `gitCredentialHelperConfigLocation:"none"` viennent déjà du `.vscode/settings.json` du projet. Le troisième est indispensable : sans lui, VSCode injecte son credential helper Git (pont vers les credentials de l'hôte) dans `/etc/gitconfig` et `~/.gitconfig` du conteneur, même avec `copyGitConfig:false`.
 
 ### Méthode A — Avec VSCode (recommandé)
 

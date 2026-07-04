@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-07-04 (suite) — Correctifs après le premier démarrage réel
+
+Vérifications faites dans le conteneur reconstruit : pare-feu actif
+(`example.com` bloqué, `api.anthropic.com` accessible), sudo restreint OK,
+Node 22 OK. Deux trous découverts dans les logs de démarrage :
+
+- **`dev.containers.gitCredentialHelperConfigLocation: "none"`** ajouté dans
+  `.vscode/settings.json` : même avec `copyGitConfig:false`, VSCode
+  injectait son credential helper Git (pont vers les credentials de l'hôte)
+  dans `/etc/gitconfig` ET `~/.gitconfig` du conteneur. L'entrée déjà écrite
+  dans le `~/.gitconfig` persistant a été retirée.
+- **`postStartCommand`** : ajout de `vscode-ipc-*.sock` et
+  `vscode-git-*.sock` aux motifs de nettoyage (sockets de session
+  précédente non couverts). Limite connue : pendant une session active,
+  ces sockets sont recréés — le nettoyage ne vaut qu'au démarrage.
+- ⚠️ Hors dépôt : un `GITLAB_TOKEN` en clair traînait dans le `~/.bashrc`
+  du volume home (et donc dans l'env de tous les process du conteneur).
+  À révoquer côté GitLab et à sortir de l'environnement.
+
 ## 2026-07-04 — Durcissement du devcontainer (revue de sécurité)
 
 Revue complète de `.devcontainer/` : correction d'une config morte, suppression

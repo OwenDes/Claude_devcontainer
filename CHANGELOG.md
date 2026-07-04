@@ -15,10 +15,12 @@ Mise en service réelle du stockage pass et finition sécurité.
   détruit au `shred` (il contenait le token). ⚠️ Les shells déjà ouverts
   gardent la variable jusqu'à fermeture. **Révocation du token côté GitLab =
   action utilisateur, toujours requise** (fuité en clair dans des logs).
-- **Convention de nommage pass** : le helper mappe l'hôte de l'URL git vers
-  l'entrée `git/<host>` (ex. `git/github.com`,
-  `git/gitlab-df.imt-atlantique.fr`, `git/gitlab.com`). Une entrée mal
-  nommée n'est jamais trouvée.
+- **Helper git générique** : un seul `credential.helper` pour tous les hôtes
+  (au lieu d'un par hôte). Ajouter un serveur = `pass insert git/<host>`,
+  aucune reconfig git — le helper décline proprement si l'hôte n'a pas
+  d'entrée. Nommage : l'entrée doit être `git/<host>` exact.
+  ⚠️ Concerne les remotes HTTPS. Pour l'usage API (issues, tickets via
+  glab/gh/curl), le token pass se passe à l'appel — voir le guide.
 - **Note SSH** : ce repo a un remote SSH (`git@github.com`) et une clé
   `~/.ssh/id_ed25519` **sans passphrase** dans le volume → push unattended
   sans agent. Le helper pass ne concerne que les remotes `https://…`.

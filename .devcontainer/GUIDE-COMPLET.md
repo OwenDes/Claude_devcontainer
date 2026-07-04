@@ -305,10 +305,16 @@ Option : ajouter une ligne `login: <user>` dans l'entrée (défaut `oauth2`).
 Ensuite : retire `export GITLAB_TOKEN=...` de `~/.bashrc` et **révoque**
 l'ancien token. Vérifie : `git ls-remote https://github.com/<user>/<repo>.git`.
 
-**Nommage (piège classique)** : le helper mappe l'hôte de l'URL git vers
-l'entrée `git/<host>` — le nom doit être **exactement** l'hôte. Un token
-rangé sous `git/gitlab/monuser` ne sera jamais trouvé ; il faut
-`git/gitlab.com` ou `git/gitlab-df.imt-atlantique.fr`. Un hôte par entrée.
+**Helper générique = ajout d'hôte automatique** : un seul
+`credential.helper` couvre TOUS les hôtes. Pour un nouveau serveur Git,
+il suffit de :
+```bash
+pass insert -m git/<host>      # ex. git/gitlab.com — 1re ligne = token
+```
+et c'est tout — aucune commande `git config` à ajouter. Le helper mappe
+l'hôte de l'URL vers l'entrée `git/<host>` (nom = **exactement** l'hôte ;
+`git/gitlab/monuser` ne marchera pas). S'il n'y a pas d'entrée, le helper
+décline proprement et git se comporte comme sans helper.
 
 **HTTPS uniquement** : pass ne s'active que pour les remotes `https://…`.
 Un remote SSH (`git@host:…`) utilise tes clés SSH, pas pass. Pour basculer :

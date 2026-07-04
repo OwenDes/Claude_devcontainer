@@ -36,19 +36,28 @@ if [ ! -f "${HOME}/.password-store/.gpg-id" ]; then
     pass init "$KEYID"
 fi
 
-# 3. Helper git par hôte (survit au scrub ciblé du helper VSCode)
-git config --global "credential.https://github.com.helper" "/usr/local/bin/git-credential-pass"
-git config --global "credential.https://${GITLAB_HOST}.helper" "/usr/local/bin/git-credential-pass"
-echo "→ Helper pass configuré pour github.com et ${GITLAB_HOST}"
+# 3. Helper git GÉNÉRIQUE : un seul pour TOUS les hôtes. git-credential-pass
+#    décline proprement (exit 0, rien) si l'hôte n'a pas d'entrée pass. Donc
+#    ajouter un nouvel hôte = juste "pass insert git/<host>", AUCUNE reconfig
+#    git. (Survit au scrub, qui ne retire que la valeur "vscode-remote-…".)
+git config --global credential.helper "/usr/local/bin/git-credential-pass"
+# Nettoie d'anciennes entrées par hôte devenues inutiles
+for h in github.com gitlab.com "${GITLAB_HOST}"; do
+    git config --global --unset-all "credential.https://${h}.helper" 2>/dev/null || true
+done
+echo "→ Helper pass GÉNÉRIQUE configuré (tous les hôtes via git/<host>)"
 
 cat <<EOF
 
-✅ Prêt. Enregistre tes tokens (1re ligne = le token) :
+✅ Prêt. Pour CHAQUE hôte que tu utilises, enregistre son token
+   (1re ligne = le token) — le nom doit être exactement l'hôte :
 
     pass insert -m git/github.com
+    pass insert -m git/gitlab.com
     pass insert -m git/${GITLAB_HOST}
 
   (option : ajouter une ligne  login: <ton-user>  ; défaut = oauth2)
+  Nouveau serveur plus tard ? juste  pass insert -m git/<host>  → ça marche.
 
 Ensuite :
   • retire la ligne  export GITLAB_TOKEN=...  de ~/.bashrc

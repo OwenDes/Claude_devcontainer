@@ -33,6 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ipset \
     dnsutils \
     iproute2 \
+    pass \
     && rm -rf /var/lib/apt/lists/*
 
 RUN sed -i '/fr_FR.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
@@ -60,6 +61,16 @@ RUN chmod 644 /etc/security-harden.sh \
 # ──────────────────────────────────────────────────────────────────────────
 COPY init-home.sh init-firewall.sh /usr/local/bin/
 RUN chmod 755 /usr/local/bin/init-home.sh /usr/local/bin/init-firewall.sh
+
+# ──────────────────────────────────────────────────────────────────────────
+# TOKENS GIT CHIFFRÉS (pass) — helper de credential + setup unique.
+# git-credential-pass : déchiffre le token à la volée (jamais en clair).
+# setup-git-token.sh  : à lancer une fois par node pour créer clé+store.
+# (.sh retiré à la copie pour un appel propre : git-credential-pass)
+# ──────────────────────────────────────────────────────────────────────────
+COPY git-credential-pass.sh /usr/local/bin/git-credential-pass
+COPY setup-git-token.sh /usr/local/bin/setup-git-token
+RUN chmod 755 /usr/local/bin/git-credential-pass /usr/local/bin/setup-git-token
 
 # ──────────────────────────────────────────────────────────────────────────
 # SUDO RESTREINT — node ne peut lancer QUE les deux scripts d'init.

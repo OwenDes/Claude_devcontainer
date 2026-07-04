@@ -280,6 +280,36 @@ Le conteneur démarre avec `--cap-add=NET_ADMIN/NET_RAW` et `init-firewall.sh` b
 - Domaine légitime bloqué (ex : `pip install`) ? Ajoute-le dans `init-firewall.sh` et rebuild.
 - Moteur qui refuse les capacités ? Le conteneur démarre quand même, avec un ⚠️ au postStart : sortie **non filtrée**, à toi de voir si c'est acceptable.
 
+### Bascule de l'accès réseau (recherche/install vs verrouillé)
+Deux modes de pare-feu, à basculer à la demande :
+```bash
+net-open      # egress complet : recherche web, apt/pip/npm install…
+net-strict    # retour à l'allowlist (Anthropic/GitHub/GitLab/npm)
+```
+(équivalent : `sudo /usr/local/bin/init-firewall.sh open|strict`). Au
+démarrage, le mode `strict` est toujours réappliqué. ⚠️ `node` ayant
+CAP_NET_ADMIN, c'est un contrôle d'intention pour un agent de confiance, pas
+une barrière contre un agent malveillant.
+
+### Token Git sans clair (pass)
+Le token ne doit PAS vivre en clair dans `~/.bashrc`. Il est chiffré via
+`pass` et déchiffré à la volée par le helper `git-credential-pass`.
+
+Configuration unique (après un rebuild qui installe `pass`) :
+```bash
+setup-git-token                              # crée clé GPG + store + helper
+pass insert -m git/github.com                # 1re ligne = le token
+pass insert -m git/gitlab-df.imt-atlantique.fr
+```
+Option : ajouter une ligne `login: <user>` dans l'entrée (défaut `oauth2`).
+Ensuite : retire `export GITLAB_TOKEN=...` de `~/.bashrc` et **révoque**
+l'ancien token. Vérifie : `git ls-remote https://github.com/<user>/<repo>.git`.
+
+> Choix « unattended » : clé GPG sans passphrase → push sans intervention.
+> Protège le token au repos et contre la fuite accidentelle (env/logs), pas
+> contre un agent qui le déchiffrerait à l'usage. Pour ce cas : YubiKey touch
+> (passage) ou credential broker côté hôte.
+
 ### Sudo restreint
 `node` ne peut lancer via sudo QUE `init-home.sh` et `init-firewall.sh` (scripts root, non modifiables). Plus de `NOPASSWD:ALL` : un process compromis dans le conteneur ne peut plus devenir root ni saboter le durcissement.
 

@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-07-04 (accès) — Bascule réseau + tokens Git chiffrés
+
+Répond à deux besoins : ouvrir/fermer l'accès réseau à la demande, et
+sortir le token Git du clair (il fuitait dans `~/.bashrc` et les logs).
+
+### Bascule réseau (mode recherche vs verrouillé)
+
+- `init-firewall.sh` accepte maintenant un mode : `strict` (défaut,
+  allowlist) ou `open` (egress complet pour recherche web / apt / pip / npm).
+- Alias pratiques (dans `security-harden.sh`) : `net-open` / `net-strict`.
+- `gitlab.com` et `gitlab-df.imt-atlantique.fr` ajoutés à l'allowlist stricte
+  (accès Git constant sans ouvrir tout le réseau).
+- ⚠️ Rappel : `node` a CAP_NET_ADMIN → contrôle d'intention pour agent de
+  confiance, pas une barrière contre un agent malveillant.
+
+### Tokens Git chiffrés (pass, cached/unattended)
+
+- `pass` installé ; helper `git-credential-pass` (déchiffre le token à la
+  volée, jamais en clair dans l'env/.bashrc/l'image) ; `setup-git-token`
+  (config unique : clé GPG sans passphrase + store + helper par hôte).
+- Scrub du helper VSCode rendu ciblé (match `vscode-remote-containers`) pour
+  ne pas supprimer le helper `pass` légitime.
+- Choix assumé « cached/unattended » : protège le token AU REPOS et contre la
+  fuite accidentelle, PAS contre un agent malveillant qui le déchiffrerait à
+  l'usage (pour ça : YubiKey touch / broker hôte — non retenus ici).
+- **À faire par l'utilisateur** après rebuild : lancer `setup-git-token`,
+  `pass insert -m git/<host>`, retirer `GITLAB_TOKEN` de `~/.bashrc`, et
+  **révoquer** l'ancien token (fuité en clair).
+
 ## 2026-07-04 (audit) — Audit en conteneur & correctifs
 
 Audit complet depuis l'intérieur du conteneur reconstruit. **Réussis** :

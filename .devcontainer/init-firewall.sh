@@ -1,13 +1,48 @@
 #!/bin/bash
 # ──────────────────────────────────────────────────────────────────────────
-# PARE-FEU SORTANT — bloque tout le trafic sortant sauf une allowlist
-# (Anthropic, GitHub, npm, marketplace VSCode). Inspiré du devcontainer
-# de référence Anthropic. Nécessite --cap-add=NET_ADMIN,NET_RAW.
-# Relancé à chaque démarrage via postStartCommand (les règles iptables
-# ne persistent pas d'un démarrage à l'autre).
+# PARE-FEU SORTANT — deux modes :
+#   strict (défaut) : bloque tout le sortant sauf une allowlist
+#                     (Anthropic, GitHub, GitLab, npm, marketplace VSCode).
+#   open            : egress complet (recherche web, apt/pip/npm install…).
+#
+# Usage :  sudo /usr/local/bin/init-firewall.sh [strict|open]
+# Alias pratiques (voir /etc/security-harden.sh) : net-strict / net-open.
+#
+# ⚠️ node possède CAP_NET_ADMIN : ce bascule est un contrôle d'INTENTION
+# pour un agent de confiance, PAS une barrière contre un agent malveillant
+# (qui pourrait rebasculer lui-même). Nécessite --cap-add=NET_ADMIN,NET_RAW.
+# Relancé à chaque démarrage via postStartCommand (règles non persistantes).
 # ──────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
+MODE="${1:-strict}"
+
+# ── Scrub du pont credential Git de VSCode (dans les deux modes) ──
+# VSCode réinjecte SON helper (pont vers les credentials Git de l'hôte) dans
+# /etc/gitconfig à chaque reconnexion. On retire UNIQUEMENT son entrée
+# (match sur la valeur) pour ne pas toucher un éventuel helper légitime
+# (ex : le helper pass, voir git-credential-pass).
+git config --system --unset-all credential.helper 'vscode-remote-containers' 2>/dev/null || true
+
+if [ "$MODE" = "open" ]; then
+    iptables -F; iptables -X
+    iptables -t nat -F 2>/dev/null || true
+    iptables -t nat -X 2>/dev/null || true
+    ipset destroy allowed-domains 2>/dev/null || true
+    iptables -P INPUT ACCEPT
+    iptables -P FORWARD ACCEPT
+    iptables -P OUTPUT ACCEPT
+    if command -v ip6tables >/dev/null 2>&1; then
+        ip6tables -F 2>/dev/null || true
+        ip6tables -P INPUT ACCEPT 2>/dev/null || true
+        ip6tables -P FORWARD ACCEPT 2>/dev/null || true
+        ip6tables -P OUTPUT ACCEPT 2>/dev/null || true
+    fi
+    echo "⚠️  Pare-feu en mode OPEN : egress complet (aucun filtrage). 'net-strict' pour re-verrouiller."
+    exit 0
+fi
+
+# ─────────────────────────── MODE STRICT ───────────────────────────
 # Repartir de zéro (politiques ACCEPT le temps de résoudre les domaines)
 iptables -P INPUT ACCEPT
 iptables -P OUTPUT ACCEPT
@@ -35,7 +70,9 @@ if [ -n "$gh_meta" ]; then
         done
 fi
 
-# Domaines indispensables : Claude Code + login OAuth, npm, VSCode
+# Domaines indispensables : Claude Code + login OAuth, npm, VSCode, Git.
+# gitlab-df.imt-atlantique.fr = ton GitLab (accès Git constant). Ajoute ici
+# tout autre hôte devant rester joignable en mode strict.
 for domain in \
     api.anthropic.com \
     claude.ai \
@@ -47,7 +84,9 @@ for domain in \
     update.code.visualstudio.com \
     marketplace.visualstudio.com \
     anthropic.gallerycdn.vsassets.io \
-    objects.githubusercontent.com; do
+    objects.githubusercontent.com \
+    gitlab.com \
+    gitlab-df.imt-atlantique.fr; do
     for ip in $(dig +short A "$domain" 2>/dev/null); do
         ipset add allowed-domains "$ip" 2>/dev/null || true
     done
@@ -88,10 +127,4 @@ if command -v ip6tables >/dev/null 2>&1; then
     ip6tables -P OUTPUT DROP 2>/dev/null || true
 fi
 
-echo "Pare-feu sortant actif : $(ipset list allowed-domains | grep -cE '^[0-9]') entrées autorisées (IPv6 bloqué)"
-
-# ── Pont credential Git ── VSCode réinjecte son credential helper (pont vers
-# les credentials Git de l'hôte) dans /etc/gitconfig à chaque reconnexion,
-# malgré gitCredentialHelperConfigLocation. On l'enlève ici (script root) ;
-# le ~/.gitconfig (node) est nettoyé côté postStartCommand.
-git config --system --unset-all credential.helper 2>/dev/null || true
+echo "Pare-feu STRICT actif : $(ipset list allowed-domains | grep -cE '^[0-9]') entrées autorisées (IPv6 bloqué). 'net-open' pour ouvrir."

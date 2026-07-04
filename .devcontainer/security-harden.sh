@@ -29,3 +29,7 @@ export BROWSER=
 # Agents SSH/GPG -> vidés pour empêcher le fallback vers les sockets par défaut
 export SSH_AUTH_SOCK=
 export GPG_AGENT_INFO=
+
+# Bascule pratique du pare-feu (mode recherche/install vs verrouillé)
+alias net-open='sudo /usr/local/bin/init-firewall.sh open'
+alias net-strict='sudo /usr/local/bin/init-firewall.sh strict'

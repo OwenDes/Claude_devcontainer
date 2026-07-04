@@ -8,6 +8,14 @@
     "updateRemoteUserUID": true,
     "containerUser": "node",
 
+    // Capacités requises par le pare-feu sortant (iptables/ipset).
+    // Si le moteur les refuse, le conteneur démarre quand même : le
+    // postStartCommand affiche alors un ⚠️ (sortie réseau non filtrée).
+    "runArgs": [
+        "--cap-add=NET_ADMIN",
+        "--cap-add=NET_RAW"
+    ],
+
     // ─── COUCHE 1 : neutralisation des variables d'environnement (ponts VSCode) ───
     "remoteEnv": {
         "SSH_AUTH_SOCK": "",
@@ -22,21 +30,24 @@
         "REMOTE_CONTAINERS_IPC": null,
         "REMOTE_CONTAINERS_SOCKETS": null,
         "REMOTE_CONTAINERS_DISPLAY_SOCK": null,
-        "WAYLAND_DISPLAY": null
+        "WAYLAND_DISPLAY": null,
+        "DISPLAY": null
     },
 
     // ─── PERSISTANCE : un seul volume sur tout le home ───
-    // Persiste d'un coup : .claude.json, .claude/, .bash_history, .config/, etc.
-    // L'initialisation depuis /opt/home-skel se fait dans le postCreateCommand.
+    // Persiste d'un coup : .claude.json, .claude/, .bash_history, .config/,
+    // et Claude Code lui-même (~/.local/bin). Init via init-home.sh.
     "mounts": [
         "source=claude-code-home,target=/home/node,type=volume"
     ],
 
+    // NB : les réglages dev.containers.* (dockerCredentialHelper,
+    // copyGitConfig) sont dans .vscode/settings.json — ici, dans
+    // customizations, ils seraient appliqués DANS le conteneur après sa
+    // création, donc trop tard pour agir.
     "customizations": {
         "vscode": {
             "settings": {
-                "dev.containers.dockerCredentialHelper": false,
-                "dev.containers.copyGitConfig": false,
                 "terminal.integrated.defaultProfile.linux": "bash"
             },
             "extensions": [
@@ -45,11 +56,11 @@
         }
     },
 
-    // Initialise le volume home depuis le modèle si le volume est "neuf".
-    // Détection : si .bashrc absent dans le home monté -> on copie le skel.
-    // Puis on s'assure que node est bien propriétaire de son home.
-    "postCreateCommand": "if [ ! -f /home/node/.bashrc ]; then sudo cp -a /opt/home-skel/. /home/node/ && sudo chown -R node:node /home/node; fi && claude --version",
+    // Init du volume home depuis le skel (seul usage de sudo autorisé,
+    // avec init-firewall.sh — voir le sudoers restreint du Dockerfile).
+    "postCreateCommand": "sudo /usr/local/bin/init-home.sh && claude --version",
 
-    // Nettoyage des sockets VSCode précoces
-    "postStartCommand": "find /tmp -maxdepth 2 \\( -name 'vscode-ssh-auth-*.sock' -o -name 'vscode-remote-containers-ipc-*.sock' -o -name 'vscode-remote-containers-*.js' \\) -delete 2>/dev/null || true"
+    // Pare-feu sortant (à chaque démarrage : les règles ne persistent pas)
+    // + nettoyage best-effort des sockets VSCode précoces.
+    "postStartCommand": "sudo /usr/local/bin/init-firewall.sh || echo '⚠️ Pare-feu NON initialisé : sortie réseau non filtrée'; find /tmp -maxdepth 2 \\( -name 'vscode-ssh-auth-*.sock' -o -name 'vscode-remote-containers-ipc-*.sock' -o -name 'vscode-remote-containers-*.js' \\) -delete 2>/dev/null || true"
 }

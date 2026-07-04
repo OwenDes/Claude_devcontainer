@@ -1,3 +1,11 @@
 {
+    // Durcissement Dev Containers — voyage avec le projet.
+    // ⚠️ Certains réglages dev.containers.* sont user/machine-scoped et
+    // ignorés au niveau workspace : après ouverture du conteneur, vérifier
+    // avec `echo $GIT_ASKPASS` (doit être vide). Sinon, les mettre dans les
+    // User Settings de la machine.
+    "dev.containers.dockerCredentialHelper": false,
+    "dev.containers.copyGitConfig": false,
+
     "remote.autoForwardPortsFallback": 0
 }

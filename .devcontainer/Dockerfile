@@ -1,8 +1,11 @@
 # ──────────────────────────────────────────────────────────────────────────
 # Claude Code Sandbox — VERSION DURCIE (Podman) + HOME PERSISTANT
-# Base Node.js 20 sur Debian Bookworm
+# Base Node.js 22 sur Debian Bookworm (Node 20 = fin de vie avril 2026)
+#
+# ⚠️ Contexte de build = le dossier .devcontainer/ (à cause des COPY) :
+#    podman build -t IMAGE .devcontainer
 # ──────────────────────────────────────────────────────────────────────────
-FROM node:20-bookworm
+FROM node:22-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo \
@@ -26,65 +29,61 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssh-client \
     bash-completion \
     locales \
+    iptables \
+    ipset \
+    dnsutils \
+    iproute2 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN sed -i '/fr_FR.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
 ENV LANG=fr_FR.UTF-8 LANGUAGE=fr_FR:fr LC_ALL=fr_FR.UTF-8
 
-RUN echo "node ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/node \
+# ──────────────────────────────────────────────────────────────────────────
+# DURCISSEMENT — script de neutralisation des ponts VSCode.
+# Placé dans /etc (root, dans l'image) et PAS dans le home : il n'est pas
+# masqué par le volume persistant, il reçoit les mises à jour à chaque
+# rebuild, et l'utilisateur node ne peut pas le modifier.
+# Sourcé depuis /etc/bash.bashrc (tous les bash interactifs) ; l'historique
+# persistant est configuré au même endroit.
+# ──────────────────────────────────────────────────────────────────────────
+COPY security-harden.sh /etc/security-harden.sh
+RUN chmod 644 /etc/security-harden.sh \
+    && { echo 'source /etc/security-harden.sh'; \
+         echo 'export PROMPT_COMMAND="history -a"'; \
+         echo 'export HISTSIZE=10000'; \
+         echo 'export HISTFILESIZE=20000'; } >> /etc/bash.bashrc
+
+# ──────────────────────────────────────────────────────────────────────────
+# SCRIPTS D'INIT (root, non modifiables par node)
+#  - init-home.sh     : remplit le volume home depuis le skel (1er démarrage)
+#  - init-firewall.sh : pare-feu sortant allowlist (à chaque démarrage)
+# ──────────────────────────────────────────────────────────────────────────
+COPY init-home.sh init-firewall.sh /usr/local/bin/
+RUN chmod 755 /usr/local/bin/init-home.sh /usr/local/bin/init-firewall.sh
+
+# ──────────────────────────────────────────────────────────────────────────
+# SUDO RESTREINT — node ne peut lancer QUE les deux scripts d'init.
+# Pas de NOPASSWD:ALL : un process compromis dans le conteneur ne peut
+# pas devenir root.
+# ──────────────────────────────────────────────────────────────────────────
+RUN echo "node ALL=(root) NOPASSWD: /usr/local/bin/init-home.sh, /usr/local/bin/init-firewall.sh" > /etc/sudoers.d/node \
     && chmod 0440 /etc/sudoers.d/node
 
-RUN npm install -g @anthropic-ai/claude-code
+# ──────────────────────────────────────────────────────────────────────────
+# CLAUDE CODE — installeur natif dans ~/.local : embarqué dans le skel,
+# donc persistant dans le volume home, et capable de se mettre à jour
+# tout seul (aucun sudo nécessaire, contrairement à npm -g).
+# ──────────────────────────────────────────────────────────────────────────
+USER node
+RUN curl -fsSL https://claude.ai/install.sh | bash
+USER root
+ENV PATH="/home/node/.local/bin:${PATH}"
 
 # ──────────────────────────────────────────────────────────────────────────
-# DURCISSEMENT — script de neutralisation des ponts VSCode
-# (sourcé en ligne 1 de .bashrc, voir plus bas)
-# ──────────────────────────────────────────────────────────────────────────
-RUN mkdir -p /home/node/.config && cat << 'HARDEN' > /home/node/.config/security-harden.sh
-# Socket IPC VSCode -> peut EXÉCUTER DES COMMANDES sur l'hôte Windows
-unset VSCODE_IPC_HOOK_CLI
-
-# IPC de l'extension Git VSCode -> accès aux credentials Git de l'hôte
-unset VSCODE_GIT_IPC_HANDLE \
-      GIT_ASKPASS \
-      VSCODE_GIT_ASKPASS_MAIN \
-      VSCODE_GIT_ASKPASS_NODE \
-      VSCODE_GIT_ASKPASS_EXTRA_ARGS
-
-# IPC Remote Containers -> pont d'exécution de commandes hôte
-unset REMOTE_CONTAINERS_IPC \
-      REMOTE_CONTAINERS_SOCKETS \
-      REMOTE_CONTAINERS_DISPLAY_SOCK
-
-# Forwarding GUI (risque faible mais inutile)
-unset WAYLAND_DISPLAY
-
-# Helper navigateur -> actions sur l'hôte via --openExternal
-export BROWSER=
-
-# Agents SSH/GPG -> vidés pour empêcher le fallback vers les sockets par défaut
-export SSH_AUTH_SOCK=
-export GPG_AGENT_INFO=
-HARDEN
-
-# Source le script en TOUTE PREMIÈRE ligne de .bashrc
-RUN sed -i '1i source ~/.config/security-harden.sh 2>/dev/null || true' /home/node/.bashrc
-
-# Bash history persistant
-RUN echo 'export HISTFILE=/home/node/.bash_history' >> /home/node/.bashrc \
-    && echo 'export PROMPT_COMMAND="history -a"' >> /home/node/.bashrc \
-    && echo 'export HISTSIZE=10000' >> /home/node/.bashrc \
-    && echo 'export HISTFILESIZE=20000' >> /home/node/.bashrc
-
-# ──────────────────────────────────────────────────────────────────────────
-# HOME PERSISTANT — mécanisme d'initialisation du volume
-#
-# Le devcontainer.json monte un volume nommé sur /home/node. Un volume VIDE
-# masquerait tout le contenu créé ci-dessus (.bashrc, .config, etc.).
-# Solution : on garde une COPIE "modèle" du home hors du point de montage
-# (/opt/home-skel). Au premier démarrage, le postCreateCommand copie ce
-# modèle dans le volume s'il est vide. Aux démarrages suivants, le volume
-# contient déjà les données -> on ne touche à rien.
+# HOME PERSISTANT — copie "modèle" du home hors du point de montage.
+# Un volume VIDE monté sur /home/node masquerait le contenu créé au build ;
+# init-home.sh (postCreateCommand) le remplit depuis /opt/home-skel au
+# premier démarrage, puis ne touche plus à rien.
 # ──────────────────────────────────────────────────────────────────────────
 RUN mkdir -p /opt/home-skel \
     && cp -a /home/node/. /opt/home-skel/ \

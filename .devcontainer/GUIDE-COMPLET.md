@@ -25,10 +25,13 @@ Guide de référence pour ton environnement Claude Code durci, avec **home persi
 ```
 ton-projet/
 ├── .devcontainer/
-│   ├── Dockerfile          # image durcie + skel pour le home persistant
-│   └── devcontainer.json   # volume home unique + remoteEnv + réglages Podman
+│   ├── Dockerfile           # image durcie + skel pour le home persistant
+│   ├── devcontainer.json    # volume home + remoteEnv + capacités pare-feu
+│   ├── security-harden.sh   # neutralisation des ponts VSCode (-> /etc)
+│   ├── init-home.sh         # init du volume home depuis le skel (root)
+│   └── init-firewall.sh     # pare-feu sortant allowlist (root)
 └── .vscode/
-    └── settings.json       # réglages de durcissement portables
+    └── settings.json        # réglages de durcissement portables
 ```
 
 Ce qui **voyage** avec ton projet : le dossier `.devcontainer/` et le `.vscode/settings.json`.
@@ -63,8 +66,10 @@ C'est la nouveauté qui règle le souci du `.claude.json` introuvable.
 **Le piège géré** : un volume vide monté sur le home masquerait le contenu créé au build (le `.bashrc` avec le durcissement, le `security-harden.sh`). Pour l'éviter :
 
 1. Le Dockerfile garde une copie "modèle" du home hors du point de montage, dans `/opt/home-skel`.
-2. Au **premier démarrage**, le `postCreateCommand` détecte que le volume est neuf (pas de `.bashrc`) et le remplit depuis le modèle.
+2. Au **premier démarrage**, le `postCreateCommand` lance `sudo /usr/local/bin/init-home.sh`, qui détecte que le volume est neuf (pas de `.bashrc`) et le remplit depuis le modèle. C'est (avec `init-firewall.sh`) le **seul** usage de sudo autorisé : le sudoers est restreint à ces deux scripts root, plus de `NOPASSWD:ALL`.
 3. Aux **démarrages suivants**, le `.bashrc` est présent -> on ne touche à rien, tes données (login, conversations) sont préservées.
+
+> Le durcissement lui-même (`security-harden.sh`) ne vit **plus dans le home** mais dans `/etc/security-harden.sh`, sourcé via `/etc/bash.bashrc`. Avantages : pas masqué par le volume, mis à jour à chaque rebuild d'image, et non modifiable par `node` (ni par un process compromis dans le conteneur).
 
 > ⚠️ Comme la structure de volume a changé (un seul `claude-code-home` au lieu des anciens `claude-code-config` + `claude-code-bashhistory`), il faut repartir d'un volume neuf et refaire le login `claude` une dernière fois.
 
@@ -84,8 +89,10 @@ C'est la nouveauté qui règle le souci du `.claude.json` introuvable.
 ```powershell
 cd C:\Users\desch\Desktop\ai\claude-code_podman
 
-podman build -t docker.io/TONUSER/claude-code-sandbox:latest -f .devcontainer/Dockerfile .
+podman build -t docker.io/TONUSER/claude-code-sandbox:latest .devcontainer
 ```
+
+> ⚠️ Le contexte de build est maintenant `.devcontainer` (et plus `.`) : le Dockerfile fait des `COPY` des scripts qui vivent dans ce dossier.
 
 ### Étape 2 — Login
 
@@ -131,6 +138,7 @@ Crée un dossier projet à l'école, avec un `.devcontainer/devcontainer.json` q
     "remoteUser": "node",
     "containerUser": "node",
     "updateRemoteUserUID": true,
+    "runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],
     "remoteEnv": {
         "SSH_AUTH_SOCK": "",
         "GPG_AGENT_INFO": "",
@@ -144,7 +152,8 @@ Crée un dossier projet à l'école, avec un `.devcontainer/devcontainer.json` q
         "REMOTE_CONTAINERS_IPC": null,
         "REMOTE_CONTAINERS_SOCKETS": null,
         "REMOTE_CONTAINERS_DISPLAY_SOCK": null,
-        "WAYLAND_DISPLAY": null
+        "WAYLAND_DISPLAY": null,
+        "DISPLAY": null
     },
     "mounts": [
         "source=claude-code-home,target=/home/node,type=volume"
@@ -152,15 +161,13 @@ Crée un dossier projet à l'école, avec un `.devcontainer/devcontainer.json` q
     "customizations": {
         "vscode": {
             "settings": {
-                "dev.containers.dockerCredentialHelper": false,
-                "dev.containers.copyGitConfig": false,
                 "terminal.integrated.defaultProfile.linux": "bash"
             },
             "extensions": ["anthropic.claude-code"]
         }
     },
-    "postCreateCommand": "if [ ! -f /home/node/.bashrc ]; then sudo cp -a /opt/home-skel/. /home/node/ && sudo chown -R node:node /home/node; fi && claude --version",
-    "postStartCommand": "find /tmp -maxdepth 2 \\( -name 'vscode-ssh-auth-*.sock' -o -name 'vscode-remote-containers-ipc-*.sock' -o -name 'vscode-remote-containers-*.js' \\) -delete 2>/dev/null || true"
+    "postCreateCommand": "sudo /usr/local/bin/init-home.sh && claude --version",
+    "postStartCommand": "sudo /usr/local/bin/init-firewall.sh || echo '⚠️ Pare-feu NON initialisé : sortie réseau non filtrée'; find /tmp -maxdepth 2 \\( -name 'vscode-ssh-auth-*.sock' -o -name 'vscode-remote-containers-ipc-*.sock' -o -name 'vscode-remote-containers-*.js' \\) -delete 2>/dev/null || true"
 }
 ```
 
@@ -176,18 +183,19 @@ cd Bureau\mon-projet-ecole
 docker pull docker.io/TONUSER/claude-code-sandbox:latest
 
 docker run -it --rm `
+  --cap-add=NET_ADMIN --cap-add=NET_RAW `
   -v claude-code-home:/home/node `
   -v "${PWD}:/workspaces/projet" `
   -w /workspaces/projet `
   docker.io/TONUSER/claude-code-sandbox:latest `
-  bash -c "if [ ! -f /home/node/.claude.json ] && [ ! -f /home/node/.bashrc ]; then sudo cp -a /opt/home-skel/. /home/node/ && sudo chown -R node:node /home/node; fi; exec bash"
+  bash -c "sudo /usr/local/bin/init-home.sh; sudo /usr/local/bin/init-firewall.sh || echo 'pare-feu NON actif'; exec bash"
 ```
 
 Sur Linux/macOS : `${PWD}` -> `$(pwd)`, les `` ` `` -> `\`.
 
 Tu arrives dans le bash du conteneur, tape `claude`.
 
-> En terminal pur, on ajoute la même logique d'init du skel dans la commande de lancement, sinon le volume home neuf serait vide. Le script `security-harden.sh` (dans le home restauré) s'exécute ensuite au démarrage du bash.
+> En terminal pur, on lance les mêmes scripts d'init que le devcontainer : `init-home.sh` (volume home neuf) et `init-firewall.sh` (pare-feu sortant). Le durcissement `/etc/security-harden.sh` s'applique automatiquement via `/etc/bash.bashrc` au démarrage du bash.
 
 ---
 
@@ -198,9 +206,11 @@ Tu arrives dans le bash du conteneur, tape `claude`.
 ```powershell
 cd C:\Users\desch\Desktop\ai\claude-code_podman
 
-podman build -t docker.io/TONUSER/claude-code-sandbox:latest -f .devcontainer/Dockerfile .
+podman build -t docker.io/TONUSER/claude-code-sandbox:latest .devcontainer
 podman push docker.io/TONUSER/claude-code-sandbox:latest
 ```
+
+> 💡 Claude Code est installé dans `~/.local/bin` (donc dans le volume home) : il se met à jour **tout seul**, sans rebuild. Le rebuild d'image sert pour l'OS, les outils et les scripts de durcissement.
 
 ### À l'école (récupérer la nouvelle version)
 
@@ -215,7 +225,7 @@ Puis VSCode : `Ctrl+Shift+P` → **Dev Containers: Rebuild Container**.
 ### Versionner (recommandé)
 
 ```powershell
-podman build -t docker.io/TONUSER/claude-code-sandbox:latest -t docker.io/TONUSER/claude-code-sandbox:v1.0 -f .devcontainer/Dockerfile .
+podman build -t docker.io/TONUSER/claude-code-sandbox:latest -t docker.io/TONUSER/claude-code-sandbox:v1.0 .devcontainer
 podman push docker.io/TONUSER/claude-code-sandbox:latest
 podman push docker.io/TONUSER/claude-code-sandbox:v1.0
 ```
@@ -265,10 +275,22 @@ Partage auto des credentials coupé. `git commit` marche, `git push` non.
 - Sinon : PAT à permissions limitées + expiration courte, ou deploy key dédiée par repo.
 - Clé SSH montée : lecture seule, avec passphrase, jamais dans l'image.
 
+### Pare-feu sortant (egress)
+Le conteneur démarre avec `--cap-add=NET_ADMIN/NET_RAW` et `init-firewall.sh` bloque **toute** sortie réseau sauf l'allowlist (Anthropic, GitHub, npm, marketplace VSCode). Claude ne peut donc pas exfiltrer des données ni télécharger n'importe quoi.
+- Domaine légitime bloqué (ex : `pip install`) ? Ajoute-le dans `init-firewall.sh` et rebuild.
+- Moteur qui refuse les capacités ? Le conteneur démarre quand même, avec un ⚠️ au postStart : sortie **non filtrée**, à toi de voir si c'est acceptable.
+
+### Sudo restreint
+`node` ne peut lancer via sudo QUE `init-home.sh` et `init-firewall.sh` (scripts root, non modifiables). Plus de `NOPASSWD:ALL` : un process compromis dans le conteneur ne peut plus devenir root ni saboter le durcissement.
+
 ### Vérifier que le durcissement est actif
 ```bash
-echo "IPC:$VSCODE_IPC_HOOK_CLI ASKPASS:$GIT_ASKPASS BROWSER:$BROWSER SSH:$SSH_AUTH_SOCK WAYLAND:$WAYLAND_DISPLAY"
+echo "IPC:$VSCODE_IPC_HOOK_CLI ASKPASS:$GIT_ASKPASS BROWSER:$BROWSER SSH:$SSH_AUTH_SOCK WAYLAND:$WAYLAND_DISPLAY X11:$DISPLAY"
 # Tout doit être vide après les deux-points.
+
+sudo -l          # doit lister UNIQUEMENT les deux scripts d'init
+curl -m 5 https://example.com   # doit ÉCHOUER (pare-feu actif)
+curl -m 5 https://api.anthropic.com   # doit répondre (403/404 = OK, ça passe)
 ```
 
 ---
@@ -283,8 +305,8 @@ podman images
 podman ps -a
 podman volume ls
 
-# Build / login / push / pull
-podman build -t docker.io/TONUSER/claude-code-sandbox:latest -f .devcontainer/Dockerfile .
+# Build / login / push / pull (contexte = .devcontainer, à cause des COPY)
+podman build -t docker.io/TONUSER/claude-code-sandbox:latest .devcontainer
 podman login docker.io
 podman push docker.io/TONUSER/claude-code-sandbox:latest
 podman pull docker.io/TONUSER/claude-code-sandbox:latest

@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-07-04 (audit) — Audit en conteneur & correctifs
+
+Audit complet depuis l'intérieur du conteneur reconstruit. **Réussis** :
+identité non privilégiée (uid=1000), neutralisation shell (IPC/ASKPASS/
+DISPLAY/WAYLAND/SSH/GPG/BROWSER vides), scripts root non modifiables par
+node, sudo confiné (hors allowlist refusé), pare-feu IPv4 (example.com
+bloqué / anthropic OK), montages propres (pas de docker.sock ni .ssh/.gnupg,
+workspace limité au projet). **Trous corrigés** :
+
+- **IPv6 non filtré** (`init-firewall.sh`) : l'allowlist était purement
+  IPv4, tout l'IPv6 contournait le pare-feu. Ajout de règles `ip6tables`
+  qui DROP tout l'IPv6 (loopback + connexions établies exceptés). Pas de
+  route IPv6 active actuellement, mais faille latente sinon.
+- **Pont credential Git réinjecté** : VSCode réécrit son helper dans
+  `/etc/gitconfig` (root) ET `~/.gitconfig` à chaque reconnexion. Scrub
+  ajouté à chaque démarrage : `/etc/gitconfig` via `init-firewall.sh`
+  (root), `~/.gitconfig` via `postStartCommand` (node). Vérifié : node ne
+  peut PAS écrire `/etc/gitconfig` lui-même (d'où le scrub root).
+
+### Limite connue (non corrigée — décision requise)
+
+- **node possède CAP_NET_ADMIN + CAP_NET_RAW dans son set effectif** : sous
+  Podman rootless, les `--cap-add` du conteneur sont hérités par
+  l'utilisateur. Conséquence prouvée : `iptables -F OUTPUT` réussit sans
+  sudo → un process compromis peut désactiver le pare-feu. Le pare-feu
+  protège donc contre une fuite *accidentelle*, mais n'est pas une barrière
+  contre un process *malveillant* dans le conteneur. Fermeture propre =
+  refonte (init réseau privilégié séparé + drop des caps pour node).
+
 ## 2026-07-04 (suite) — Correctifs après le premier démarrage réel
 
 Vérifications faites dans le conteneur reconstruit : pare-feu actif

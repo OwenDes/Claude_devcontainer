@@ -73,4 +73,25 @@ iptables -P INPUT DROP
 iptables -P FORWARD DROP
 iptables -P OUTPUT DROP
 
-echo "Pare-feu sortant actif : $(ipset list allowed-domains | grep -cE '^[0-9]') entrées autorisées"
+# ── IPv6 ── L'allowlist ci-dessus est purement IPv4 : sans ces règles,
+# tout le trafic IPv6 contournerait le pare-feu. On bloque tout l'IPv6
+# (le loopback reste ouvert), sauf si ip6tables est indisponible.
+if command -v ip6tables >/dev/null 2>&1; then
+    ip6tables -F 2>/dev/null || true
+    ip6tables -X 2>/dev/null || true
+    ip6tables -A INPUT  -i lo -j ACCEPT
+    ip6tables -A OUTPUT -o lo -j ACCEPT
+    ip6tables -A INPUT  -m state --state ESTABLISHED,RELATED -j ACCEPT
+    ip6tables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+    ip6tables -P INPUT DROP 2>/dev/null || true
+    ip6tables -P FORWARD DROP 2>/dev/null || true
+    ip6tables -P OUTPUT DROP 2>/dev/null || true
+fi
+
+echo "Pare-feu sortant actif : $(ipset list allowed-domains | grep -cE '^[0-9]') entrées autorisées (IPv6 bloqué)"
+
+# ── Pont credential Git ── VSCode réinjecte son credential helper (pont vers
+# les credentials Git de l'hôte) dans /etc/gitconfig à chaque reconnexion,
+# malgré gitCredentialHelperConfigLocation. On l'enlève ici (script root) ;
+# le ~/.gitconfig (node) est nettoyé côté postStartCommand.
+git config --system --unset-all credential.helper 2>/dev/null || true

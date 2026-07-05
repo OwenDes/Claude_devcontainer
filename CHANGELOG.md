@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-07-05 — Audit des 3 scripts pass vendorés (note, aucun changement de code)
+
+Revue ligne à ligne des extensions officielles embarquées. Verdict : **bien
+faites**, on ne les retouche pas (versions verbatim = diff trivial avec
+l'upstream). Réserves consignées ici au cas où on voudrait y revenir — aucune
+n'est bloquante.
+
+- **`update.bash`** (roddhjav v2.2.1) — le plus solide. Une des extensions pass
+  les plus utilisées (packagée Debian). `set -e -o pipefail`, propagation
+  d'erreurs par codes de retour, `check_sneaky_paths` sur chaque chemin.
+  - ⚠️ *Fragilité amont* : remplacement de la 1re ligne par `sed '1c …'` avec
+    échappement `sed 's/[\/&]/\\&/g'` (l. 158) — gère `/` et `&`, méthode « sed
+    sur une ligne » classiquement fragile. Sans risque pour un token (1 ligne,
+    alphanum + symboles) ; un secret finissant par `\` pourrait théoriquement
+    gêner (hors de notre cas d'usage).
+  - Cosmétique : `$SYMBOLS $CLIP` non-quotés (l. 171), word-splitting volontaire.
+- **`tail.bash`** — trivialement correct (`tail -n +2` sur la sortie déchiffrée).
+  - ⚠️ *Error-handling imprécis* : `$GPG -d … | tail -n +2 || exit $?` sans
+    `pipefail` → `$?` = code de `tail`, pas de gpg. Si le déchiffrement échoue,
+    on obtient une **sortie vide** (exit 0) au lieu d'une erreur. Pas dangereux.
+- **`tailedit.bash`** — bonne hygiène.
+  - 👍 `SECURE_TMPDIR` = ramdisk `/dev/shm` + trap de nettoyage → la queue en
+    clair n'atterrit jamais sur le disque persistant. Retry propre si le
+    chiffrement échoue.
+  - ⚠️ Déchiffre **2–3 fois** (l. 17, 22, 26) : sans impact avec la clé sans
+    passphrase, **mais** sur la branche YubiKey « touch obligatoire » = 2–3
+    appuis par `tailedit`. Même dépendance à `git_add_file` que `update`
+    (couverte par notre `pass git init`).
+
 ## 2026-07-05 — Extensions pass OFFICIELLES (update / tail)
 
 Remplace la première tentative « maison » : on part désormais des extensions

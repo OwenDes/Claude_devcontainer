@@ -30,6 +30,11 @@ export BROWSER=
 export SSH_AUTH_SOCK=
 export GPG_AGENT_INFO=
 
+# Éditeur par défaut : nano (plus simple que vi). Utilisé par git commit,
+# `pass edit`, `pass tailedit`, etc. Le `:-` respecte un EDITOR déjà défini.
+export EDITOR="${EDITOR:-nano}"
+export VISUAL="${VISUAL:-nano}"
+
 # Bascule pratique du pare-feu (mode recherche/install vs verrouillé)
 alias net-open='sudo /usr/local/bin/init-firewall.sh open'
 alias net-strict='sudo /usr/local/bin/init-firewall.sh strict'

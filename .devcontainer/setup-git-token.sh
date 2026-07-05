@@ -36,6 +36,17 @@ if [ ! -f "${HOME}/.password-store/.gpg-id" ]; then
     pass init "$KEYID"
 fi
 
+# 2b. Adosse le store à git. Deux bénéfices :
+#     - historique auditable des rotations (blobs chiffrés, jamais en clair) ;
+#     - l'extension officielle `pass update` (mode --provide) s'appuie sur
+#       git_add_file ; sans dépôt git celui-ci renvoie 1 et update affiche une
+#       fausse erreur "encryption aborted" alors que l'entrée EST mise à jour.
+#     (Utilise l'identité git globale ; réutilisable sur un store existant.)
+if [ ! -d "${HOME}/.password-store/.git" ]; then
+    echo "→ Adossement du store à git…"
+    pass git init
+fi
+
 # 3. Helper git GÉNÉRIQUE : un seul pour TOUS les hôtes. git-credential-pass
 #    décline proprement (exit 0, rien) si l'hôte n'a pas d'entrée pass. Donc
 #    ajouter un nouvel hôte = juste "pass insert git/<host>", AUCUNE reconfig

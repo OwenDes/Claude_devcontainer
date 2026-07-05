@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-07-05 — Extensions pass OFFICIELLES (update / tail)
+
+Remplace la première tentative « maison » : on part désormais des extensions
+**officielles amont, vendorées VERBATIM** (attribution/licence intactes, diff
+futur trivial avec l'upstream).
+
+- **`update.bash`** = `roddhjav/pass-update` **v2.2.1** (GPL-3). `pass update -p
+  <entrée>` rote la 1re ligne (token collé) en **conservant le reste**
+  (login:/notes) ; sans `-p` il **génère** un mot de passe. Features complètes
+  amont (`--multiline`, `--clip`, regex `--include/--exclude`, `--edit`…).
+- **`tail.bash`** = `palortoff/pass-extension-tail` (GPL-3). `pass tail
+  <entrée>` affiche tout **sauf** la 1re ligne — lire login:/notes sans exposer
+  le token.
+- Installées dans le **dossier système** `/usr/lib/password-store/extensions`
+  (root, `755`) → toujours actives, **non modifiables par `node`**, et **sans**
+  activer `PASSWORD_STORE_ENABLE_EXTENSIONS` (le dossier user-dir serait un
+  vecteur d'exécution de code). Modèle de menace inchangé.
+- **`setup-git-token.sh`** adosse maintenant le store à git (`pass git init`) :
+  historique chiffré auditable des rotations, **et** `pass update -p` ne renvoie
+  plus la fausse erreur « encryption aborted » (upstream s'appuie sur
+  `git_add_file`, qui échoue sur un store non-git).
+- Provenance + licence détaillées dans `.devcontainer/pass-extensions/NOTICE`.
+- Validé en store isolé : `tail` masque le token ; `update -p` rote en gardant
+  le reste (rc 0, commit git) ; `update` (génération) idem.
+
 ## 2026-07-05 — Tripwire socket moteur + note portabilité Docker/Podman
 
 - **Tripwire** dans `postStartCommand` : alerte 🚨 si un socket moteur

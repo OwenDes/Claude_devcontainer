@@ -1,0 +1,28 @@
+Extensions `pass` vendorées dans ce projet
+==========================================
+
+Les deux fichiers de ce dossier sont copiés VERBATIM depuis leurs dépôts
+amont officiels (aucune modification), puis installés dans le dossier système
+`/usr/lib/password-store/extensions` par le Dockerfile. Les garder identiques
+à l'amont rend l'audit et le suivi des mises à jour (diff) triviaux.
+
+update.bash
+-----------
+  Projet  : pass-update
+  Auteur  : Alexandre PUJOL <alexandre@pujol.io>
+  Source  : https://github.com/roddhjav/pass-update
+  Version : 2.2.1
+  Licence : GPL-3.0-or-later  (en-tête SPDX conservé en tête de fichier)
+
+tail.bash
+---------
+  Projet  : pass-extension-tail
+  Auteur  : palortoff
+  Source  : https://github.com/palortoff/pass-extension-tail  (src/tail.bash)
+  Licence : GPL-3.0-or-later  (voir LICENSE du dépôt amont)
+  Note    : l'amont ne met pas d'en-tête SPDX dans le fichier ; il est livré
+            tel quel. La commande `tailedit` du même dépôt n'est pas embarquée
+            (non nécessaire ici).
+
+Le texte complet de la GNU GPL v3 est disponible sur :
+https://www.gnu.org/licenses/gpl-3.0.txt

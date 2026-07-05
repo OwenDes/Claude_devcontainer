@@ -330,6 +330,20 @@ est déjà exportée par `security-harden.sh`.
 > contre un agent qui le déchiffrerait à l'usage. Pour ce cas : YubiKey touch
 > (passage) ou credential broker côté hôte.
 
+**Extensions pass officielles** (vendorées verbatim dans l'image, dossier
+système root-owned → non modifiables par `node`, sans activer les extensions
+user-dir ; provenance/licence dans `.devcontainer/pass-extensions/NOTICE`) :
+```bash
+pass update -p git/github.com  # rote le token (1re ligne) en gardant le reste
+pass tail      git/github.com  # affiche tout SAUF le token (login:, notes)
+```
+- `update` = **roddhjav/pass-update** (GPL-3). Mode `-p`/`--provide` = tu colles
+  le token émis par le fournisseur ; sans `-p` il en **génère** un aléatoire
+  (inutile pour un token fournisseur). ⚠️ `-p` **affiche l'ancien secret** avant
+  de le remplacer (comportement upstream). Chaque rotation est **commitée** dans
+  le dépôt git du store (historique chiffré auditable).
+- `tail` = **palortoff/pass-extension-tail** (GPL-3).
+
 ### Issues / tickets / MR via `glab` et `gh`
 Les CLI `gh` (GitHub) et `glab` (GitLab) sont installées dans l'image, et
 des **wrappers** (dans `security-harden.sh`) injectent le token depuis pass

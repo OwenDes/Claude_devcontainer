@@ -97,11 +97,14 @@ RUN chmod 755 /usr/local/bin/git-credential-pass /usr/local/bin/setup-git-token
 #  - update.bash : roddhjav/pass-update v2.2.1 (GPL-3, en-tête conservé). Rote
 #                  la 1re ligne d'une entrée en gardant le reste ; features
 #                  complètes (--provide, génération, --multiline, regex…).
-#  - tail.bash   : palortoff/pass-extension-tail (GPL-3). Affiche tout SAUF la
-#                  1re ligne (métadonnées/notes, jamais le token).
-COPY pass-extensions/update.bash pass-extensions/tail.bash /usr/lib/password-store/extensions/
+#  - tail.bash     : palortoff/pass-extension-tail (GPL-3). Affiche tout SAUF
+#                    la 1re ligne (métadonnées/notes, jamais le token).
+#  - tailedit.bash : même repo. Édite ces métadonnées dans $EDITOR sans jamais
+#                    exposer ni altérer la 1re ligne (le token).
+COPY pass-extensions/update.bash pass-extensions/tail.bash pass-extensions/tailedit.bash /usr/lib/password-store/extensions/
 RUN chmod 755 /usr/lib/password-store/extensions/update.bash \
-              /usr/lib/password-store/extensions/tail.bash
+              /usr/lib/password-store/extensions/tail.bash \
+              /usr/lib/password-store/extensions/tailedit.bash
 
 # ──────────────────────────────────────────────────────────────────────────
 # SUDO RESTREINT — node ne peut lancer QUE les deux scripts d'init.

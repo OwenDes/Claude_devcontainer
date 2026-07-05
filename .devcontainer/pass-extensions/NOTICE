@@ -14,15 +14,17 @@ update.bash
   Version : 2.2.1
   Licence : GPL-3.0-or-later  (en-tête SPDX conservé en tête de fichier)
 
-tail.bash
----------
+tail.bash + tailedit.bash
+-------------------------
   Projet  : pass-extension-tail
   Auteur  : palortoff
-  Source  : https://github.com/palortoff/pass-extension-tail  (src/tail.bash)
+  Source  : https://github.com/palortoff/pass-extension-tail
+            (src/tail.bash et src/tailedit.bash)
   Licence : GPL-3.0-or-later  (voir LICENSE du dépôt amont)
-  Note    : l'amont ne met pas d'en-tête SPDX dans le fichier ; il est livré
-            tel quel. La commande `tailedit` du même dépôt n'est pas embarquée
-            (non nécessaire ici).
+  Note    : l'amont ne met pas d'en-tête SPDX dans ces fichiers ; ils sont
+            livrés tels quels. `tail` lit les métadonnées sans exposer le
+            token ; `tailedit` les édite dans $EDITOR sans jamais exposer ni
+            altérer la 1re ligne (le token).
 
 Le texte complet de la GNU GPL v3 est disponible sur :
 https://www.gnu.org/licenses/gpl-3.0.txt

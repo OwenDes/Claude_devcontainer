@@ -336,13 +336,16 @@ user-dir ; provenance/licence dans `.devcontainer/pass-extensions/NOTICE`) :
 ```bash
 pass update -p git/github.com  # rote le token (1re ligne) en gardant le reste
 pass tail      git/github.com  # affiche tout SAUF le token (login:, notes)
+pass tailedit  git/github.com  # édite les métadonnées dans $EDITOR sans le token
 ```
 - `update` = **roddhjav/pass-update** (GPL-3). Mode `-p`/`--provide` = tu colles
   le token émis par le fournisseur ; sans `-p` il en **génère** un aléatoire
   (inutile pour un token fournisseur). ⚠️ `-p` **affiche l'ancien secret** avant
   de le remplacer (comportement upstream). Chaque rotation est **commitée** dans
   le dépôt git du store (historique chiffré auditable).
-- `tail` = **palortoff/pass-extension-tail** (GPL-3).
+- `tail` / `tailedit` = **palortoff/pass-extension-tail** (GPL-3). `tail` lit
+  les métadonnées (login:/notes) sans exposer le token ; `tailedit` les **édite**
+  dans `$EDITOR` sans jamais afficher ni modifier la 1re ligne (le token).
 
 ### Issues / tickets / MR via `glab` et `gh`
 Les CLI `gh` (GitHub) et `glab` (GitLab) sont installées dans l'image, et

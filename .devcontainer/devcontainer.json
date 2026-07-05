@@ -60,7 +60,10 @@
     // avec init-firewall.sh — voir le sudoers restreint du Dockerfile).
     "postCreateCommand": "sudo /usr/local/bin/init-home.sh && claude --version",
 
-    // Pare-feu sortant (à chaque démarrage : les règles ne persistent pas)
-    // + nettoyage best-effort des sockets VSCode précoces.
-    "postStartCommand": "sudo /usr/local/bin/init-firewall.sh || echo '⚠️ Pare-feu NON initialisé : sortie réseau non filtrée'; git config --global --unset-all credential.helper 'vscode-remote-containers' 2>/dev/null; find /tmp -maxdepth 2 \\( -name 'vscode-ssh-auth-*.sock' -o -name 'vscode-remote-containers-ipc-*.sock' -o -name 'vscode-remote-containers-*.js' -o -name 'vscode-ipc-*.sock' -o -name 'vscode-git-*.sock' \\) -delete 2>/dev/null || true"
+    // À chaque démarrage (portable Docker/Podman) :
+    //  1. Tripwire : alerte si un socket moteur (docker/podman) est monté
+    //     dans le conteneur → ce serait une évasion root triviale.
+    //  2. Pare-feu sortant (les règles ne persistent pas).
+    //  3. Scrub du credential helper VSCode + nettoyage best-effort des sockets.
+    "postStartCommand": "for s in /var/run/docker.sock /run/docker.sock /run/podman/podman.sock /var/run/podman/podman.sock; do [ -S \"$s\" ] && echo \"🚨 SÉCURITÉ : socket moteur monté ($s) → évasion root possible, RETIRE ce mount du devcontainer.json\"; done; sudo /usr/local/bin/init-firewall.sh || echo '⚠️ Pare-feu NON initialisé : sortie réseau non filtrée'; git config --global --unset-all credential.helper 'vscode-remote-containers' 2>/dev/null; find /tmp -maxdepth 2 \\( -name 'vscode-ssh-auth-*.sock' -o -name 'vscode-remote-containers-ipc-*.sock' -o -name 'vscode-remote-containers-*.js' -o -name 'vscode-ipc-*.sock' -o -name 'vscode-git-*.sock' \\) -delete 2>/dev/null || true"
 }

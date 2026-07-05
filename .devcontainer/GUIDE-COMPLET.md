@@ -355,6 +355,11 @@ gitlab-df.imt-atlantique.fr sont déjà dans l'allowlist stricte du pare-feu.
 ### Sudo restreint
 `node` ne peut lancer via sudo QUE `init-home.sh` et `init-firewall.sh` (scripts root, non modifiables). Plus de `NOPASSWD:ALL` : un process compromis dans le conteneur ne peut plus devenir root ni saboter le durcissement.
 
+### Portabilité Docker Desktop / Podman
+Le durcissement vit dans l'**image + `devcontainer.json`**, donc il est **identique** sous les deux moteurs. Seule diffère l'isolation du moteur : Podman **rootless** mappe `root` du conteneur sur ton user non privilégié (userns) ; Docker Desktop tourne **rootful dans une VM**. En session, même sécurité (`node` ne devient jamais root) ; la différence ne joue qu'en cas d'évasion de conteneur.
+
+⚠️ **Point de vigilance Docker** : ne **jamais** monter le socket moteur (`/var/run/docker.sock`) — ce serait une évasion root triviale. Un **tripwire** au démarrage (`postStartCommand`) alerte 🚨 si un socket docker/podman est monté dans le conteneur. Ça n'arrive pas par défaut (on ne le monte pas), mais l'ajout de la *feature* devcontainer `docker-in-docker`/`docker-outside-of-docker` le ferait — le tripwire te préviendrait.
+
 ### Vérifier que le durcissement est actif
 ```bash
 echo "IPC:$VSCODE_IPC_HOOK_CLI ASKPASS:$GIT_ASKPASS BROWSER:$BROWSER SSH:$SSH_AUTH_SOCK WAYLAND:$WAYLAND_DISPLAY X11:$DISPLAY"

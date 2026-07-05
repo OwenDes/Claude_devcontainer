@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-07-05 — Tripwire socket moteur + note portabilité Docker/Podman
+
+- **Tripwire** dans `postStartCommand` : alerte 🚨 si un socket moteur
+  (`docker.sock`/`podman.sock`) est monté dans le conteneur → ce serait une
+  évasion root triviale. Transforme le « on ne le monte pas » (passif) en
+  garde-fou **actif**, portable Docker Desktop **et** Podman. Testé
+  (négatif propre + positif détecté sur un faux socket).
+- **GUIDE** : section « Portabilité Docker Desktop / Podman » — le
+  durcissement (image + devcontainer.json) est identique sous les deux ;
+  seule diffère l'isolation moteur (Podman rootless/userns vs Docker rootful
+  dans une VM). En session, même sécurité ; la différence ne joue qu'en cas
+  d'évasion.
+
 ## 2026-07-04 (CLI API) — glab + gh avec token pass injecté
 
 Le token pass sert à l'**API** (issues, tickets, MR/PR), pas au `git push`
